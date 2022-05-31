@@ -1,9 +1,12 @@
 import puppeteer from 'puppeteer';
 
+const mangaTarget = 'https://blogtruyen.vn/27435/kowloon-generic-romance';
+
+
 (async () => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({headless:false});
   const page = await browser.newPage();
-  await page.goto('https://blogtruyen.vn/27113/khi-anh-hung-moi-chinh-la-ac-quy');
+  await page.goto(mangaTarget);
   await page.waitForSelector('.manga-detail');
   // get name of manga
   const elementNameManga = await page.$('.entry-title > a');
@@ -37,6 +40,34 @@ import puppeteer from 'puppeteer';
       hour: dateTemp[1] 
     } 
   }, elementLastEntryUpdate);
+  // get all element chapter of manga on blogtruyen
+  const chapters = await page.$$eval("#list-chapters > p > span.title > a", elements => {
+    return elements.map(item => {
+      return { 
+        nameChapter: item.textContent,
+        linkChapter: 'https://blogtruyen.vn' + item.getAttribute('href')
+      }
+    })
+  })
+  
+  // prints a array of text
+  Promise.all(chapters).then(async (chapters) => {
+    const chaptersTarget = chapters.reverse();
+    for (let index = 0; index < chaptersTarget.length; index++) {
+      // console.log(chapter);
+      (async () => {
+        const page = await browser.newPage();
+        await page.goto(chaptersTarget[index].linkChapter);
+        await page.waitForSelector('#content');
+        // const images = await page.$$eval("#content > img", elements => {
+        //   return elements.map(item => item.getAttribute('src'))
+        // });
+        // chaptersTarget[index].images = images;
+        await page.close();
+      })();
+    }
+    // console.log(chaptersTarget);
+  })
 
   console.log('Name manga:', nameManga._remoteObject.value);
   console.log('Thumbnail:', thumbnail);
