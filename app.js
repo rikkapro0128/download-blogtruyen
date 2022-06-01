@@ -1,13 +1,20 @@
 import puppeteer from "puppeteer";
+import fs from 'fs';
+// import { dirname } from 'path';
+// import { fileURLToPath } from 'url';
+
+import downloadListImage from './downloads.js';
+import { removeAccents } from './helper.js';
 
 const mangaTarget = "https://blogtruyen.vn/27435/kowloon-generic-romance";
-const cloneChapterStart = 4 || undefined;
-const cloneChapterEnd = 6 || undefined;
+const cloneChapterStart = undefined || undefined; // undefined or typeof number
+const cloneChapterEnd = undefined || undefined; // undefined or typeof number
+const rootPath = 'C:/Users/Yatte Miru/Downloads';
 
 const runClone = async () => {
   try {
     const browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
       args: ["--disable-software-rasterizer", "--disable-gpu"],
     });
     const page = await browser.newPage();
@@ -18,7 +25,7 @@ const runClone = async () => {
     const nameManga = await elementNameManga.getProperty("textContent");
     // get image thumbnail of manga
     const elementThumbnail = await page.$(".thumbnail > img");
-    const thumbnail = await page.evaluate(
+    const thumbNail = await page.evaluate(
       (el) => el.getAttribute("src"),
       elementThumbnail
     );
@@ -98,12 +105,21 @@ const runClone = async () => {
     // prints a array of text
     Promise.all(chapters).then(async (chapters) => {
       let start = 0;
+      let pathManga = `${rootPath}/${removeAccents(nameManga._remoteObject.value)}`
+      if (fs.existsSync(pathManga)) {
+        // remove directory
+        fs.rmSync(pathManga, { recursive: true, force: true });
+      }
+      fs.mkdirSync(pathManga, { recursive: true });
+
       for (let index = 0; index < chapters.length; index++) {
         // console.log(chapter);
         if (chapters[index] === null) {
           continue;
         }
         let status = false;
+        let initPathChapter = `${pathManga}/${removeAccents(chapters[index].nameChapter.split(' ').join('-'))}/`
+        fs.mkdirSync(initPathChapter, { recursive: true });
         do {
           try {
             const page = await browser.newPage();
@@ -112,16 +128,10 @@ const runClone = async () => {
             const images = await page.$$eval("#content > img", (elements) => {
               return elements.map((item) => item.getAttribute("src"));
             });
-            // const result = await page.evaluate(images => {
-            //   // return Promise.resolve(8 * x);
-            //   let a = document.createElement('a');
-            //   for(let image of images) {
-            //     let timeFile = Date.now();
-            //     a.href = image;
-            //     a.download = `image-${timeFile}.jpg`;
-            //     a.click();
-            //   }
-            // }, images);
+            
+            const infoResponseFromDownload = await downloadListImage(images, initPathChapter);
+            chapters[index].infoSave = infoResponseFromDownload;
+
             chapters[index].images = images;
             await page.close();
             status = false;
@@ -133,17 +143,24 @@ const runClone = async () => {
       }
       await browser.close();
       
-      console.log("Name manga:", nameManga._remoteObject.value);
-      console.log("Thumbnail:", thumbnail);
-      console.log("Desc:", desc);
-      console.log("Name other:", nameOther);
-      console.log("Name author:", nameAuthor);
-      console.log("Team translate:", teamTranslate);
-      console.log("Category manga:", elementCategory);
-      console.log("User post:", userPost.name);
-      console.log("Link User post:", userPost.linkUserOnBlogTruyen);
-      console.log("Date last entry update:", lastEntryUpdate);
-      console.log(chapters);
+      let sumItUp = {};
+      sumItUp.nameManga = nameManga._remoteObject.value
+      sumItUp.thumbNail = thumbNail
+      sumItUp.desc = desc
+      sumItUp.nameOther = nameOther
+      sumItUp.nameAuthor = nameAuthor
+      sumItUp.teamTranslate = teamTranslate
+      sumItUp.elementCategory = elementCategory
+      sumItUp.userPost = { name: userPost.name, linkUserOnBlogTruyen: userPost.linkUserOnBlogTruyen }
+      sumItUp.lastEntryUpdate = lastEntryUpdate
+      sumItUp.chapters = chapters
+
+      const jsonParse = JSON.stringify(sumItUp);
+
+      fs.writeFileSync(`${pathManga}/info.json`, jsonParse, { mode: 777 });
+
+      console.log('<=< Saved File! >=>');
+      console.log('Clone is done it up!');
     });
     
   } catch (error) {
@@ -151,8 +168,14 @@ const runClone = async () => {
   }
 }
 
-if (cloneChapterEnd >= cloneChapterStart) {
+if (typeof cloneChapterEnd === 'number' && typeof cloneChapterStart === 'number') {
+  if(cloneChapterEnd >= cloneChapterStart) {
+    runClone();
+  }else {
+    console.log(`Chapter end: ${cloneChapterEnd} is smaller than chapter start: ${cloneChapterStart}`)
+  }
+} else if(typeof cloneChapterEnd === 'undefined' && typeof cloneChapterStart === 'undefined') {
   runClone();
 }else {
-  console.log(`Chapter end: ${cloneChapterEnd} is smaller than chapter start: ${cloneChapterStart}`)
+  console.log(`Chapter end: ${cloneChapterEnd} different typeof data: ${cloneChapterStart}`)
 }
