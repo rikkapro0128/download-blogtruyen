@@ -6,13 +6,16 @@ import fs from 'fs';
 import downloadListImage from './downloads.js';
 import { removeAccents } from './helper.js';
 
-const mangaTarget = "https://blogtruyen.vn/27435/kowloon-generic-romance";
+const mangaTarget = "https://blogtruyen.vn/9947/yeu-than-ky";
 const cloneChapterStart = undefined || undefined; // undefined or typeof number
 const cloneChapterEnd = undefined || undefined; // undefined or typeof number
-const rootPath = 'C:/Users/Yatte Miru/Downloads';
+const rootPath = 'E:/Download';
 
 const runClone = async () => {
   try {
+    
+    console.time('>>> DOWNLOAD TOTAL TIME');
+
     const browser = await puppeteer.launch({
       headless: true,
       args: ["--disable-software-rasterizer", "--disable-gpu"],
@@ -161,6 +164,8 @@ const runClone = async () => {
 
       console.log('<=< Saved File! >=>');
       console.log('Clone is done it up!');
+
+      console.timeEnd('>>> DOWNLOAD TOTAL TIME');
     });
     
   } catch (error) {

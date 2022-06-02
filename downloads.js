@@ -54,12 +54,14 @@ export default async (imageLinks, path, maxStream) => {
   return new Promise(async (res, rej) => {
 
     try {
-      let stack = 0
-      for (let index = 0; index < imageLinks.length; index++) {
+      let stack = 0;
+      let lenListImage = imageLinks.length;
+      for (let index = 0; index < lenListImage; index++) {
         stack++;
         console.log('Download with stack => ' + stack + ' => ' + imageLinks[index]);
         chunkLink.push(imageLinks[index]);
-        if (chunkLink.length === maxNumberStream) {
+        // just download by max stack or end of last index
+        if (chunkLink.length === maxNumberStream || index === (lenListImage - 1)) {
           const checkList = chunkLink.map((link) => {
             let nameFileByDate = path + Date.now();
             return download(link, nameFileByDate);
